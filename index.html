@@ -521,41 +521,13 @@ $("makePrompt").addEventListener("click", () => {
   if (!subject || !location || !movement)
     return alert("Isi produk, lokasi, dan aksi utama terlebih dahulu.");
 
-  $("promptResult").textContent =
-`Create a highly realistic ${$("style").value} fashion UGC video for Google Flow.
-TOTAL STRUCTURE: 3 connected clips, 10 seconds each (30 seconds total).
-MAIN PRODUCT: ${subject}.
-LOCATION REFERENCE: ${location}.
-PRODUCT ACCURACY: ${productDetails}
-HOOK: ${hook}
-MODEL ACTION: ${movement}
-CAMERA: ${camera}
-CHARACTER CONSISTENCY: ${character}
+  const sharedRules = `Create a highly realistic ${$("style").value} fashion UGC video for Google Flow, exactly 10 seconds long. Main product: ${subject}. Location reference: ${location}. Product accuracy: ${productDetails} Use the supplied product reference as the source of truth; preserve the product's exact color, silhouette, fit, fabric appearance, stitching, seams, collar, sleeves, buttons, graphics, and every visible detail. Do not redesign, recolor, replace, or invent product features. Use the supplied location reference consistently, with the same environment and lighting. Character consistency: ${character} Camera: ${camera} Main model action: ${movement} Maintain realistic anatomy, natural fabric movement, believable shadows, and authentic smartphone UGC quality. Audio: ${$("audio").value} On-screen text: ${$("subtitles").value} Avoid visual glitches, extra fingers, warped fabric, changing product details, abrupt movements, and unnecessary scene changes.`;
 
-REFERENCE RULES:
-- Use the supplied product reference image as the source of truth for the featured product.
-- Preserve exact product color, silhouette, fit, material appearance, stitching, seams, collar, sleeves, buttons, graphics, and other visible details.
-- Do not redesign, recolor, replace, or add details to the featured product.
-- Use the supplied location reference consistently. Keep the same environment, lighting direction, and general framing across all clips.
-- Maintain realistic human anatomy, natural fabric movement, believable shadows, and authentic smartphone UGC quality.
-- Keep the same character, wardrobe, and visual continuity between clips.
+  const prompt1 = `PROMPT 1 — KLIP 1 (DETIK 0–10): ${sharedRules} Action for this clip: ${clip1} Start with the hook immediately, introduce the product clearly, and establish the location. This is the opening clip, so do not refer to an earlier clip. Keep the featured product clearly visible throughout.`;
+  const prompt2 = `PROMPT 2 — KLIP 2 (DETIK 10–20): ${sharedRules} Action for this clip: ${clip2} Continue as the next part of the same video. Start from a pose and camera position that can naturally follow the end of Clip 1; preserve the same model identity, product, outfit, location, lighting, and visual style. Focus on product details without distracting from the featured item.`;
+  const prompt3 = `PROMPT 3 — KLIP 3 (DETIK 20–30): ${sharedRules} Action for this clip: ${clip3} Continue as the final part of the same video, following naturally from Clip 2. Preserve the same model identity, product, outfit, location, lighting, and visual style. End with a clear product showcase and a natural final pose.`;
 
-CLIP 1 — 0–10 SECONDS:
-${clip1}
-Start with the hook immediately. Establish the product and location. Keep the product clearly visible.
-
-CLIP 2 — 10–20 SECONDS:
-${clip2}
-Continue naturally from the end pose and camera position of Clip 1. Focus on product details without distracting from the featured item.
-
-CLIP 3 — 20–30 SECONDS:
-${clip3}
-Continue from Clip 2 with consistent identity, outfit, lighting, and location. End with a clean, natural product showcase.
-
-AUDIO: ${$("audio").value}
-ON-SCREEN TEXT: ${$("subtitles").value}
-Avoid visual glitches, extra fingers, warped fabric, changing product details, abrupt transitions, and unnecessary scene changes.
-No logos or product features that are not present in the reference images.`;
+  $("promptResult").textContent = `${prompt1}\n\n${prompt2}\n\n${prompt3}`;
 });
 
 $("copyPrompt").addEventListener("click", async () => {
