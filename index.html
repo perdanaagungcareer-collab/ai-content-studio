@@ -97,6 +97,36 @@ footer {
   color: var(--muted);
   font-size: 13px;
 }
+
+.auth-wrap {
+  max-width: 560px;
+  margin: 28px auto;
+  padding: 0 18px;
+}
+.auth-wrap .panel { margin-top: 0; }
+.auth-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.auth-actions .action { margin-bottom: 0; }
+.status { margin-top: 12px; font-size: 14px; overflow-wrap: anywhere; }
+.status.error { color: #ff9b9b; }
+.status.ok { color: #9fe3b0; }
+.account-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 14px;
+}
+.account-bar .action { width: auto; margin: 0; }
+.saved-prompt { white-space: pre-wrap; overflow-wrap: anywhere; }
+
 @media(max-width:700px) {
   .layout { grid-template-columns: 1fr; }
   nav {
@@ -119,12 +149,35 @@ footer {
   <p class="muted">Satu tempat untuk ide, fashion UGC, dan prompt AI.</p>
 </header>
 
-<div class="layout">
+
+<section class="auth-wrap" id="authPanel">
+  <div class="panel">
+    <h2>Masuk ke AI Content Studio</h2>
+    <p class="muted">Masuk atau buat akun untuk menyimpan data di database pribadi kamu.</p>
+    <label for="authEmail">Email</label>
+    <input id="authEmail" type="email" autocomplete="email" placeholder="nama@email.com">
+    <label for="authPassword">Kata sandi</label>
+    <input id="authPassword" type="password" autocomplete="current-password" placeholder="Minimal 6 karakter">
+    <div class="auth-actions">
+      <button class="action primary" id="signInBtn">Masuk</button>
+      <button class="action" id="signUpBtn">Buat akun</button>
+    </div>
+    <p class="status" id="authStatus" role="status" aria-live="polite"></p>
+  </div>
+</section>
+
+<div class="account-bar" id="accountBar" hidden>
+  <span id="accountEmail"></span>
+  <button class="action" id="signOutBtn">Keluar</button>
+</div>
+
+<div class="layout" id="appLayout" hidden>
 <nav>
   <button class="active" data-page="home">⌂ Dashboard</button>
   <button data-page="studio">✎ Content Studio</button>
   <button data-page="fashion">▣ Fashion Catalog</button>
   <button data-page="generator">✧ Prompt Generator</button>
+  <button data-page="savedPromptsPanel">▤ Prompt Tersimpan</button>
 </nav>
 
 <main>
@@ -151,7 +204,7 @@ footer {
   <div class="panel">
     <h3>Mulai dari sini</h3>
     <p class="muted">Pilih modul di menu untuk mulai bekerja.
-    Data yang disimpan saat ini tersimpan di browser perangkat ini.</p>
+    Data kamu disimpan di database Supabase dan tersedia setelah login.</p>
   </div>
 </section>
 
@@ -209,23 +262,51 @@ footer {
     <h3>Hasil prompt</h3>
     <div id="promptResult" class="result muted">Prompt kamu akan muncul di sini.</div>
     <button class="action" id="copyPrompt">Salin prompt</button>
+    <button class="action primary" id="savePrompt">Simpan prompt</button>
   </div>
+</section>
+
+<section id="savedPromptsPanel" hidden>
+  <h2>Prompt Tersimpan</h2>
+  <p class="muted">Prompt yang disimpan akan muncul di sini.</p>
+  <div class="panel"><div id="savedPrompts"></div></div>
 </section>
 </main>
 </div>
 
 <footer>AI Content Studio · Personal workspace · Versi awal</footer>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const $ = id => document.getElementById(id);
 
-function read(key) {
-  try { return JSON.parse(localStorage.getItem(key) || "[]"); }
-  catch { return []; }
+// Konfigurasi Supabase proyek AI Content Studio.
+// Publishable key memang digunakan di browser; jangan pernah memasukkan secret/service_role key di sini.
+const SUPABASE_URL = "https://tqkvopyimihaxwfrahdt.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_26a7DLwInmGQsg5Yc-bd7w_a8oWlybB";
+const supabaseClient = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_PUBLISHABLE_KEY
+);
+
+let currentUser = null;
+let notesCache = [];
+let productsCache = [];
+let promptsCache = [];
+
+function setStatus(message, kind = "") {
+  const el = $("authStatus");
+  el.textContent = message;
+  el.className = "status" + (kind ? " " + kind : "");
 }
-function save(key, data) {
-  localStorage.setItem(key, JSON.stringify(data));
+
+function setAppVisible(isVisible) {
+  $("authPanel").hidden = isVisible;
+  $("accountBar").hidden = !isVisible;
+  $("appLayout").hidden = !isVisible;
+  if (isVisible) $("accountEmail").textContent = currentUser?.email || "Akun aktif";
 }
+
 function showPage(page) {
   document.querySelectorAll("main section").forEach(section => {
     section.hidden = section.id !== page;
@@ -234,6 +315,7 @@ function showPage(page) {
     button.classList.toggle("active", button.dataset.page === page);
   });
 }
+
 document.querySelectorAll("[data-page]").forEach(button => {
   button.addEventListener("click", () => showPage(button.dataset.page));
 });
@@ -241,9 +323,77 @@ document.querySelectorAll("[data-go]").forEach(button => {
   button.addEventListener("click", () => showPage(button.dataset.go));
 });
 
+async function signUp() {
+  const email = $("authEmail").value.trim();
+  const password = $("authPassword").value;
+  if (!email || !password) return setStatus("Isi email dan kata sandi terlebih dahulu.", "error");
+  if (password.length < 6) return setStatus("Kata sandi minimal 6 karakter.", "error");
+  setStatus("Membuat akun...");
+  const { data, error } = await supabaseClient.auth.signUp({ email, password });
+  if (error) return setStatus(error.message, "error");
+  if (data.session) {
+    setStatus("Akun berhasil dibuat. Menyiapkan workspace...", "ok");
+  } else {
+    setStatus("Pendaftaran diterima. Periksa email untuk konfirmasi jika diminta, lalu masuk.", "ok");
+  }
+}
+
+async function signIn() {
+  const email = $("authEmail").value.trim();
+  const password = $("authPassword").value;
+  if (!email || !password) return setStatus("Isi email dan kata sandi terlebih dahulu.", "error");
+  setStatus("Sedang masuk...");
+  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  if (error) return setStatus(error.message, "error");
+  setStatus("Berhasil masuk.", "ok");
+}
+
+$("signUpBtn").addEventListener("click", signUp);
+$("signInBtn").addEventListener("click", signIn);
+$("signOutBtn").addEventListener("click", async () => {
+  const { error } = await supabaseClient.auth.signOut();
+  if (error) alert("Gagal keluar: " + error.message);
+});
+
+supabaseClient.auth.onAuthStateChange((_event, session) => {
+  currentUser = session?.user || null;
+  setAppVisible(Boolean(currentUser));
+  if (currentUser) {
+    // Jalankan setelah callback auth selesai untuk menghindari deadlock pada event auth.
+    setTimeout(() => loadAllData(), 0);
+  } else {
+    notesCache = [];
+    productsCache = [];
+    promptsCache = [];
+    $("notes").replaceChildren();
+    $("products").replaceChildren();
+    $("savedPrompts").replaceChildren();
+  }
+});
+
+async function loadAllData() {
+  if (!currentUser) return;
+  const [notesResult, productsResult, promptsResult] = await Promise.all([
+    supabaseClient.from("content_notes").select("*").order("created_at", { ascending: false }),
+    supabaseClient.from("fashion_products").select("*").order("created_at", { ascending: false }),
+    supabaseClient.from("generated_prompts").select("*").order("created_at", { ascending: false })
+  ]);
+  const failed = [notesResult, productsResult, promptsResult].find(result => result.error);
+  if (failed) {
+    alert("Data belum bisa dimuat: " + failed.error.message + ". Pastikan tabel dan kebijakan akses Supabase sudah dibuat.");
+    return;
+  }
+  notesCache = notesResult.data || [];
+  productsCache = productsResult.data || [];
+  promptsCache = promptsResult.data || [];
+  renderNotes();
+  renderProducts();
+  renderSavedPrompts();
+}
+
 function renderNotes() {
   $("notes").replaceChildren();
-  read("studioNotes").forEach((note, index) => {
+  notesCache.forEach(note => {
     const item = document.createElement("div");
     item.className = "item";
     const title = document.createElement("strong");
@@ -253,23 +403,29 @@ function renderNotes() {
     const remove = document.createElement("button");
     remove.className = "action";
     remove.textContent = "Hapus";
-    remove.addEventListener("click", () => {
-      const notes = read("studioNotes");
-      notes.splice(index, 1);
-      save("studioNotes", notes);
+    remove.addEventListener("click", async () => {
+      if (!confirm("Hapus catatan ini?")) return;
+      const { error } = await supabaseClient.from("content_notes").delete().eq("id", note.id);
+      if (error) return alert("Catatan gagal dihapus: " + error.message);
+      notesCache = notesCache.filter(row => row.id !== note.id);
       renderNotes();
     });
     item.append(title, body, remove);
     $("notes").append(item);
   });
+  if (!notesCache.length) $("notes").textContent = "Belum ada catatan tersimpan.";
 }
-$("saveNote").addEventListener("click", () => {
+
+$("saveNote").addEventListener("click", async () => {
+  if (!currentUser) return alert("Masuk terlebih dahulu.");
   const title = $("noteTitle").value.trim();
   const body = $("noteBody").value.trim();
   if (!title || !body) return alert("Isi judul dan catatan terlebih dahulu.");
-  const notes = read("studioNotes");
-  notes.unshift({ title, body });
-  save("studioNotes", notes);
+  const { data, error } = await supabaseClient.from("content_notes")
+    .insert({ user_id: currentUser.id, title, body })
+    .select().single();
+  if (error) return alert("Catatan gagal disimpan: " + error.message);
+  notesCache.unshift(data);
   $("noteTitle").value = "";
   $("noteBody").value = "";
   renderNotes();
@@ -277,7 +433,7 @@ $("saveNote").addEventListener("click", () => {
 
 function renderProducts() {
   $("products").replaceChildren();
-  read("fashionProducts").forEach((product, index) => {
+  productsCache.forEach(product => {
     const item = document.createElement("div");
     item.className = "item";
     const title = document.createElement("strong");
@@ -295,25 +451,31 @@ function renderProducts() {
     const remove = document.createElement("button");
     remove.className = "action";
     remove.textContent = "Hapus";
-    remove.addEventListener("click", () => {
-      const products = read("fashionProducts");
-      products.splice(index, 1);
-      save("fashionProducts", products);
+    remove.addEventListener("click", async () => {
+      if (!confirm("Hapus produk ini?")) return;
+      const { error } = await supabaseClient.from("fashion_products").delete().eq("id", product.id);
+      if (error) return alert("Produk gagal dihapus: " + error.message);
+      productsCache = productsCache.filter(row => row.id !== product.id);
       renderProducts();
     });
     item.append(remove);
     $("products").append(item);
   });
+  if (!productsCache.length) $("products").textContent = "Belum ada produk tersimpan.";
 }
-$("saveProduct").addEventListener("click", () => {
+
+$("saveProduct").addEventListener("click", async () => {
+  if (!currentUser) return alert("Masuk terlebih dahulu.");
   const name = $("productName").value.trim();
   const url = $("productUrl").value.trim();
   if (!name) return alert("Masukkan nama produk.");
   if (url && !/^https?:\/\//i.test(url))
     return alert("Tautan harus diawali http:// atau https://");
-  const products = read("fashionProducts");
-  products.unshift({ name, url });
-  save("fashionProducts", products);
+  const { data, error } = await supabaseClient.from("fashion_products")
+    .insert({ user_id: currentUser.id, name, url: url || null })
+    .select().single();
+  if (error) return alert("Produk gagal disimpan: " + error.message);
+  productsCache.unshift(data);
   $("productName").value = "";
   $("productUrl").value = "";
   renderProducts();
@@ -335,6 +497,7 @@ Keep the product design, color, cut, and details consistent with the reference i
 No background music. No subtitles.
 Duration: 10 seconds.`;
 });
+
 $("copyPrompt").addEventListener("click", async () => {
   const prompt = $("promptResult").textContent;
   if (!prompt || prompt === "Prompt kamu akan muncul di sini.")
@@ -347,8 +510,69 @@ $("copyPrompt").addEventListener("click", async () => {
   }
 });
 
-renderNotes();
-renderProducts();
+$("savePrompt").addEventListener("click", async () => {
+  if (!currentUser) return alert("Masuk terlebih dahulu.");
+  const promptText = $("promptResult").textContent;
+  if (!promptText || promptText === "Prompt kamu akan muncul di sini.")
+    return alert("Buat prompt terlebih dahulu.");
+  const { data, error } = await supabaseClient.from("generated_prompts")
+    .insert({
+      user_id: currentUser.id,
+      title: $("subject").value.trim() || "Prompt tanpa judul",
+      subject: $("subject").value.trim(),
+      location: $("location").value.trim(),
+      style: $("style").value,
+      movement: $("movement").value.trim(),
+      prompt_text: promptText
+    })
+    .select().single();
+  if (error) return alert("Prompt gagal disimpan: " + error.message);
+  promptsCache.unshift(data);
+  renderSavedPrompts();
+  alert("Prompt berhasil disimpan ke database.");
+});
+
+function renderSavedPrompts() {
+  $("savedPrompts").replaceChildren();
+  promptsCache.forEach(prompt => {
+    const item = document.createElement("div");
+    item.className = "item";
+    const title = document.createElement("strong");
+    title.textContent = prompt.title || "Prompt tersimpan";
+    const text = document.createElement("p");
+    text.className = "saved-prompt";
+    text.textContent = prompt.prompt_text;
+    const use = document.createElement("button");
+    use.className = "action";
+    use.textContent = "Muat ke hasil prompt";
+    use.addEventListener("click", () => {
+      $("promptResult").textContent = prompt.prompt_text;
+      showPage("generator");
+    });
+    const remove = document.createElement("button");
+    remove.className = "action";
+    remove.textContent = "Hapus prompt";
+    remove.addEventListener("click", async () => {
+      if (!confirm("Hapus prompt ini?")) return;
+      const { error } = await supabaseClient.from("generated_prompts").delete().eq("id", prompt.id);
+      if (error) return alert("Prompt gagal dihapus: " + error.message);
+      promptsCache = promptsCache.filter(row => row.id !== prompt.id);
+      renderSavedPrompts();
+    });
+    item.append(title, text, use, remove);
+    $("savedPrompts").append(item);
+  });
+  if (!promptsCache.length) $("savedPrompts").textContent = "Belum ada prompt tersimpan.";
+}
+
+// Periksa sesi yang sudah ada ketika halaman dibuka.
+(async function init() {
+  const { data, error } = await supabaseClient.auth.getSession();
+  if (error) setStatus("Tidak bisa memeriksa sesi: " + error.message, "error");
+  currentUser = data?.session?.user || null;
+  setAppVisible(Boolean(currentUser));
+  if (currentUser) await loadAllData();
+})();
 </script>
 </body>
 </html>
