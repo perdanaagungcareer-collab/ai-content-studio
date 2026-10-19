@@ -1,0 +1,354 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Content Studio</title>
+<style>
+:root {
+  --bg: #0d1117;
+  --panel: #161b22;
+  --line: #30363d;
+  --text: #e6edf3;
+  --muted: #919cab;
+  --accent: #8b9cff;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px -apple-system, BlinkMacSystemFont, sans-serif;
+}
+header {
+  padding: 24px;
+  border-bottom: 1px solid var(--line);
+}
+header small { color: var(--accent); }
+h1 { margin: 8px 0; font-size: 28px; }
+p { line-height: 1.6; }
+.muted { color: var(--muted); }
+.layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 80vh;
+}
+nav { padding: 20px; border-right: 1px solid var(--line); }
+nav button, .action {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 13px;
+  margin-bottom: 10px;
+  text-align: left;
+  cursor: pointer;
+  font-size: 15px;
+}
+nav button.active, .action.primary {
+  background: var(--accent);
+  color: #101426;
+  border-color: var(--accent);
+}
+main { padding: 24px; min-width: 0; }
+.cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin: 22px 0;
+}
+.card, .panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 18px;
+}
+.card h3 { margin-top: 0; }
+.card p { color: var(--muted); font-size: 14px; }
+.panel { margin-top: 16px; }
+input, textarea, select {
+  display: block;
+  width: 100%;
+  margin: 10px 0 16px;
+  padding: 12px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: inherit;
+}
+textarea { min-height: 110px; resize: vertical; }
+.action { text-align: center; }
+.result {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.6;
+}
+.item {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+footer {
+  padding: 22px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 13px;
+}
+@media(max-width:700px) {
+  .layout { grid-template-columns: 1fr; }
+  nav {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  nav button { min-width: 145px; }
+  .cards { grid-template-columns: 1fr; }
+  main { padding: 18px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <small>YOUR PERSONAL WORKSPACE</small>
+  <h1>AI Content Studio ✦</h1>
+  <p class="muted">Satu tempat untuk ide, fashion UGC, dan prompt AI.</p>
+</header>
+
+<div class="layout">
+<nav>
+  <button class="active" data-page="home">⌂ Dashboard</button>
+  <button data-page="studio">✎ Content Studio</button>
+  <button data-page="fashion">▣ Fashion Catalog</button>
+  <button data-page="generator">✧ Prompt Generator</button>
+</nav>
+
+<main>
+<section id="home">
+  <h2>Selamat datang!</h2>
+  <p class="muted">Pusat kerja untuk semua proyek konten AI kamu.</p>
+  <div class="cards">
+    <div class="card">
+      <h3>✎ Content Studio</h3>
+      <p>Simpan ide, konsep, storyboard, dan caption.</p>
+      <button class="action" data-go="studio">Buka modul</button>
+    </div>
+    <div class="card">
+      <h3>▣ Fashion Catalog</h3>
+      <p>Kelola daftar produk fashion dan tautannya.</p>
+      <button class="action" data-go="fashion">Buka modul</button>
+    </div>
+    <div class="card">
+      <h3>✧ Prompt Generator</h3>
+      <p>Susun prompt video UGC dengan lebih cepat.</p>
+      <button class="action" data-go="generator">Buka modul</button>
+    </div>
+  </div>
+  <div class="panel">
+    <h3>Mulai dari sini</h3>
+    <p class="muted">Pilih modul di menu untuk mulai bekerja.
+    Data yang disimpan saat ini tersimpan di browser perangkat ini.</p>
+  </div>
+</section>
+
+<section id="studio" hidden>
+  <h2>Content Studio</h2>
+  <p class="muted">Simpan ide konten, storyboard, dan caption.</p>
+  <div class="panel">
+    <label for="noteTitle">Judul ide</label>
+    <input id="noteTitle" placeholder="Contoh: UGC kaos basic">
+    <label for="noteBody">Catatan konten</label>
+    <textarea id="noteBody" placeholder="Tulis ide, storyboard, atau caption..."></textarea>
+    <button class="action primary" id="saveNote">Simpan catatan</button>
+  </div>
+  <div class="panel">
+    <h3>Catatan tersimpan</h3>
+    <div id="notes"></div>
+  </div>
+</section>
+
+<section id="fashion" hidden>
+  <h2>Fashion Catalog</h2>
+  <p class="muted">Buat daftar produk yang ingin kamu promosikan.</p>
+  <div class="panel">
+    <label for="productName">Nama produk</label>
+    <input id="productName" placeholder="Contoh: Kaos oversized">
+    <label for="productUrl">Tautan produk (opsional)</label>
+    <input id="productUrl" type="url" placeholder="https://...">
+    <button class="action primary" id="saveProduct">Tambah produk</button>
+  </div>
+  <div class="panel">
+    <h3>Daftar produk</h3>
+    <div id="products"></div>
+  </div>
+</section>
+
+<section id="generator" hidden>
+  <h2>AI Prompt Generator</h2>
+  <p class="muted">Susun draft prompt video untuk digunakan di Google Flow.</p>
+  <div class="panel">
+    <label for="subject">Produk atau objek utama</label>
+    <input id="subject" placeholder="Contoh: kaos polo merah">
+    <label for="location">Lokasi video</label>
+    <input id="location" placeholder="Contoh: kamar minimalis aesthetic">
+    <label for="style">Gaya video</label>
+    <select id="style">
+      <option>Realistic UGC fashion</option>
+      <option>Product showcase</option>
+      <option>Casual lifestyle</option>
+    </select>
+    <label for="movement">Gerakan atau aksi</label>
+    <textarea id="movement" placeholder="Contoh: tampilkan detail kain, lalu putar badan perlahan."></textarea>
+    <button class="action primary" id="makePrompt">Buat prompt</button>
+  </div>
+  <div class="panel">
+    <h3>Hasil prompt</h3>
+    <div id="promptResult" class="result muted">Prompt kamu akan muncul di sini.</div>
+    <button class="action" id="copyPrompt">Salin prompt</button>
+  </div>
+</section>
+</main>
+</div>
+
+<footer>AI Content Studio · Personal workspace · Versi awal</footer>
+
+<script>
+const $ = id => document.getElementById(id);
+
+function read(key) {
+  try { return JSON.parse(localStorage.getItem(key) || "[]"); }
+  catch { return []; }
+}
+function save(key, data) {
+  localStorage.setItem(key, JSON.stringify(data));
+}
+function showPage(page) {
+  document.querySelectorAll("main section").forEach(section => {
+    section.hidden = section.id !== page;
+  });
+  document.querySelectorAll("nav button").forEach(button => {
+    button.classList.toggle("active", button.dataset.page === page);
+  });
+}
+document.querySelectorAll("[data-page]").forEach(button => {
+  button.addEventListener("click", () => showPage(button.dataset.page));
+});
+document.querySelectorAll("[data-go]").forEach(button => {
+  button.addEventListener("click", () => showPage(button.dataset.go));
+});
+
+function renderNotes() {
+  $("notes").replaceChildren();
+  read("studioNotes").forEach((note, index) => {
+    const item = document.createElement("div");
+    item.className = "item";
+    const title = document.createElement("strong");
+    title.textContent = note.title;
+    const body = document.createElement("p");
+    body.textContent = note.body;
+    const remove = document.createElement("button");
+    remove.className = "action";
+    remove.textContent = "Hapus";
+    remove.addEventListener("click", () => {
+      const notes = read("studioNotes");
+      notes.splice(index, 1);
+      save("studioNotes", notes);
+      renderNotes();
+    });
+    item.append(title, body, remove);
+    $("notes").append(item);
+  });
+}
+$("saveNote").addEventListener("click", () => {
+  const title = $("noteTitle").value.trim();
+  const body = $("noteBody").value.trim();
+  if (!title || !body) return alert("Isi judul dan catatan terlebih dahulu.");
+  const notes = read("studioNotes");
+  notes.unshift({ title, body });
+  save("studioNotes", notes);
+  $("noteTitle").value = "";
+  $("noteBody").value = "";
+  renderNotes();
+});
+
+function renderProducts() {
+  $("products").replaceChildren();
+  read("fashionProducts").forEach((product, index) => {
+    const item = document.createElement("div");
+    item.className = "item";
+    const title = document.createElement("strong");
+    title.textContent = product.name;
+    item.append(title);
+    if (product.url) {
+      const link = document.createElement("a");
+      link.href = product.url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = "Buka tautan produk";
+      link.style.display = "block";
+      item.append(link);
+    }
+    const remove = document.createElement("button");
+    remove.className = "action";
+    remove.textContent = "Hapus";
+    remove.addEventListener("click", () => {
+      const products = read("fashionProducts");
+      products.splice(index, 1);
+      save("fashionProducts", products);
+      renderProducts();
+    });
+    item.append(remove);
+    $("products").append(item);
+  });
+}
+$("saveProduct").addEventListener("click", () => {
+  const name = $("productName").value.trim();
+  const url = $("productUrl").value.trim();
+  if (!name) return alert("Masukkan nama produk.");
+  if (url && !/^https?:\/\//i.test(url))
+    return alert("Tautan harus diawali http:// atau https://");
+  const products = read("fashionProducts");
+  products.unshift({ name, url });
+  save("fashionProducts", products);
+  $("productName").value = "";
+  $("productUrl").value = "";
+  renderProducts();
+});
+
+$("makePrompt").addEventListener("click", () => {
+  const subject = $("subject").value.trim();
+  const location = $("location").value.trim();
+  const movement = $("movement").value.trim();
+  if (!subject || !location || !movement)
+    return alert("Isi produk, lokasi, dan gerakan terlebih dahulu.");
+  $("promptResult").textContent =
+`Create a realistic ${$("style").value} video.
+Main subject: ${subject}.
+Location: ${location}.
+Action: ${movement}.
+Use natural lighting, realistic fabric texture, and smooth camera movement.
+Keep the product design, color, cut, and details consistent with the reference image.
+No background music. No subtitles.
+Duration: 10 seconds.`;
+});
+$("copyPrompt").addEventListener("click", async () => {
+  const prompt = $("promptResult").textContent;
+  if (!prompt || prompt === "Prompt kamu akan muncul di sini.")
+    return alert("Buat prompt terlebih dahulu.");
+  try {
+    await navigator.clipboard.writeText(prompt);
+    alert("Prompt berhasil disalin.");
+  } catch {
+    alert("Pilih dan salin teks prompt secara manual.");
+  }
+});
+
+renderNotes();
+renderProducts();
+</script>
+</body>
+</html>
