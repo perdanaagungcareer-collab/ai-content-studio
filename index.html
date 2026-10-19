@@ -248,15 +248,41 @@ footer {
     <input id="subject" placeholder="Contoh: kaos polo merah">
     <label for="location">Lokasi video</label>
     <input id="location" placeholder="Contoh: kamar minimalis aesthetic">
+    <label for="productDetails">Detail produk yang wajib dipertahankan</label>
+    <textarea id="productDetails" placeholder="Contoh: warna hitam pekat, bahan cotton, potongan oversized, kerah dan jahitan sesuai gambar referensi."></textarea>
     <label for="style">Gaya video</label>
     <select id="style">
       <option>Realistic UGC fashion</option>
       <option>Product showcase</option>
       <option>Casual lifestyle</option>
     </select>
-    <label for="movement">Gerakan atau aksi</label>
-    <textarea id="movement" placeholder="Contoh: tampilkan detail kain, lalu putar badan perlahan."></textarea>
-    <button class="action primary" id="makePrompt">Buat prompt</button>
+    <label for="hook">Hook pembuka</label>
+    <input id="hook" placeholder="Contoh: tunjukkan detail produk sejak detik pertama">
+    <label for="character">Konsistensi karakter / model</label>
+    <textarea id="character" placeholder="Contoh: gunakan karakter yang sama, wajah, rambut, proporsi tubuh, dan outfit lain tetap konsisten."></textarea>
+    <label for="camera">Gerakan kamera</label>
+    <input id="camera" placeholder="Contoh: handheld smartphone, medium shot lalu close-up detail kain">
+    <label for="movement">Aksi utama model / produk</label>
+    <textarea id="movement" placeholder="Contoh: model merapikan kaos, menunjukkan tekstur, lalu berpose natural."></textarea>
+    <label for="clip1">Klip 1 — detik 0–10</label>
+    <textarea id="clip1" placeholder="Hook dan pengenalan produk."></textarea>
+    <label for="clip2">Klip 2 — detik 10–20</label>
+    <textarea id="clip2" placeholder="Tampilkan detail produk dan gerakan model."></textarea>
+    <label for="clip3">Klip 3 — detik 20–30</label>
+    <textarea id="clip3" placeholder="Tampilan akhir, pose natural, dan penutup."></textarea>
+    <label for="audio">Audio</label>
+    <select id="audio">
+      <option value="No background music and no voice-over. Use only natural ambient sound if present.">Tanpa musik dan tanpa voice-over</option>
+      <option value="No background music. Include a casual, friendly Indonesian voice-over; no lip-sync.">Voice-over bahasa Indonesia, tanpa musik</option>
+      <option value="No background music. Natural on-camera speech with accurate lip-sync.">Dialog langsung dengan lip-sync</option>
+      <option value="Use subtle background music, no voice-over.">Musik latar ringan, tanpa voice-over</option>
+    </select>
+    <label for="subtitles">Subtitle</label>
+    <select id="subtitles">
+      <option value="No subtitles, no on-screen text, and no captions.">Tanpa subtitle dan teks di layar</option>
+      <option value="Include minimal Indonesian subtitles only when speech is present.">Subtitle bahasa Indonesia bila ada dialog</option>
+    </select>
+    <button class="action primary" id="makePrompt">Buat prompt 3 klip</button>
   </div>
   <div class="panel">
     <h3>Hasil prompt</h3>
@@ -274,7 +300,7 @@ footer {
 </main>
 </div>
 
-<footer>AI Content Studio · Personal workspace · Versi awal</footer>
+<footer>AI Content Studio · Personal workspace · Prompt Generator UGC 3 klip</footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -485,17 +511,51 @@ $("makePrompt").addEventListener("click", () => {
   const subject = $("subject").value.trim();
   const location = $("location").value.trim();
   const movement = $("movement").value.trim();
+  const productDetails = $("productDetails").value.trim() || "Match the supplied product reference as closely as possible.";
+  const hook = $("hook").value.trim() || "Start with a clear visual hook that shows the product immediately.";
+  const character = $("character").value.trim() || "Keep the same model identity, face, hair, body proportions, and styling consistent across all clips.";
+  const camera = $("camera").value.trim() || "Natural handheld smartphone camera movement, stable framing, and realistic focus.";
+  const clip1 = $("clip1").value.trim() || "Open with the hook and introduce the product clearly.";
+  const clip2 = $("clip2").value.trim() || "Show product details with natural model movement and close-up shots.";
+  const clip3 = $("clip3").value.trim() || "Finish with a clear full-product view, a relaxed pose, and a natural ending.";
   if (!subject || !location || !movement)
-    return alert("Isi produk, lokasi, dan gerakan terlebih dahulu.");
+    return alert("Isi produk, lokasi, dan aksi utama terlebih dahulu.");
+
   $("promptResult").textContent =
-`Create a realistic ${$("style").value} video.
-Main subject: ${subject}.
-Location: ${location}.
-Action: ${movement}.
-Use natural lighting, realistic fabric texture, and smooth camera movement.
-Keep the product design, color, cut, and details consistent with the reference image.
-No background music. No subtitles.
-Duration: 10 seconds.`;
+`Create a highly realistic ${$("style").value} fashion UGC video for Google Flow.
+TOTAL STRUCTURE: 3 connected clips, 10 seconds each (30 seconds total).
+MAIN PRODUCT: ${subject}.
+LOCATION REFERENCE: ${location}.
+PRODUCT ACCURACY: ${productDetails}
+HOOK: ${hook}
+MODEL ACTION: ${movement}
+CAMERA: ${camera}
+CHARACTER CONSISTENCY: ${character}
+
+REFERENCE RULES:
+- Use the supplied product reference image as the source of truth for the featured product.
+- Preserve exact product color, silhouette, fit, material appearance, stitching, seams, collar, sleeves, buttons, graphics, and other visible details.
+- Do not redesign, recolor, replace, or add details to the featured product.
+- Use the supplied location reference consistently. Keep the same environment, lighting direction, and general framing across all clips.
+- Maintain realistic human anatomy, natural fabric movement, believable shadows, and authentic smartphone UGC quality.
+- Keep the same character, wardrobe, and visual continuity between clips.
+
+CLIP 1 — 0–10 SECONDS:
+${clip1}
+Start with the hook immediately. Establish the product and location. Keep the product clearly visible.
+
+CLIP 2 — 10–20 SECONDS:
+${clip2}
+Continue naturally from the end pose and camera position of Clip 1. Focus on product details without distracting from the featured item.
+
+CLIP 3 — 20–30 SECONDS:
+${clip3}
+Continue from Clip 2 with consistent identity, outfit, lighting, and location. End with a clean, natural product showcase.
+
+AUDIO: ${$("audio").value}
+ON-SCREEN TEXT: ${$("subtitles").value}
+Avoid visual glitches, extra fingers, warped fabric, changing product details, abrupt transitions, and unnecessary scene changes.
+No logos or product features that are not present in the reference images.`;
 });
 
 $("copyPrompt").addEventListener("click", async () => {
@@ -522,7 +582,7 @@ $("savePrompt").addEventListener("click", async () => {
       subject: $("subject").value.trim(),
       location: $("location").value.trim(),
       style: $("style").value,
-      movement: $("movement").value.trim(),
+      movement: $("movement").value.trim() + "\nHook: " + $("hook").value.trim() + "\nKlip 1: " + $("clip1").value.trim() + "\nKlip 2: " + $("clip2").value.trim() + "\nKlip 3: " + $("clip3").value.trim(),
       prompt_text: promptText
     })
     .select().single();
